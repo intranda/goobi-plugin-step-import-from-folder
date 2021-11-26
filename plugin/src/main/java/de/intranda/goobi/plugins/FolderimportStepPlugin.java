@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * This file is part of a plugin for Goobi - a Workflow tool for the support of mass digitization.
@@ -29,7 +30,8 @@ import java.util.List;
 
 import org.apache.commons.configuration.HierarchicalConfiguration;
 import org.apache.commons.configuration.SubnodeConfiguration;
-import org.apache.commons.configuration.tree.xpath.XPathExpressionEngine;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.SystemUtils;
 import org.goobi.beans.Process;
 import org.goobi.beans.Step;
 import org.goobi.production.cli.helper.StringPair;
@@ -48,13 +50,20 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import net.xeoh.plugins.base.annotations.PluginImplementation;
+import ugh.dl.ContentFile;
 import ugh.dl.DigitalDocument;
 import ugh.dl.DocStruct;
+import ugh.dl.DocStructType;
 import ugh.dl.Fileformat;
 import ugh.dl.Metadata;
 import ugh.dl.MetadataType;
 import ugh.dl.Prefs;
+import ugh.exceptions.MetadataTypeNotAllowedException;
+import ugh.exceptions.PreferencesException;
+import ugh.exceptions.TypeNotAllowedAsChildException;
+import ugh.exceptions.TypeNotAllowedForParentException;
 import ugh.exceptions.UGHException;
+import ugh.exceptions.WriteException;
 
 @PluginImplementation
 @Log4j2
@@ -78,6 +87,14 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
     private String rootFolder;
 
     private MetadataType titleType;
+    private MetadataType datingType;
+    private MetadataType publicationType;
+
+    private DocStructType pageType;
+    private MetadataType physType;
+    private MetadataType logType;
+
+    private String masterFolder;
 
     @Override
     public void initialize(Step step, String returnPath) {
@@ -86,26 +103,34 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
         prefs = process.getRegelsatz().getPreferences();
         // read parameters from correct block in configuration file
         SubnodeConfiguration myconfig = ConfigPlugins.getProjectAndStepConfig(title, step);
-        myconfig.setExpressionEngine(new XPathExpressionEngine());
-        rootFolder = myconfig.getString("/imageFolder");
+        rootFolder = myconfig.getString("imageFolder");
 
-        List<HierarchicalConfiguration> pl = myconfig.configurationsAt("/prefixType");
+        List<HierarchicalConfiguration> pl = myconfig.configurationsAt("prefixType");
         for (HierarchicalConfiguration hc : pl) {
-            String folderName = hc.getString("@foldername");
-            String doctype = hc.getString("@doctype");
+            String doctype = hc.getString("[@doctype]");
+            String folderName = hc.getString("[@foldername]");
             prefixList.add(new StringPair(folderName, doctype));
         }
 
         mainType = myconfig.getString("mainType");
 
-        List<HierarchicalConfiguration> sl = myconfig.configurationsAt("/suffixType");
+        List<HierarchicalConfiguration> sl = myconfig.configurationsAt("suffixType");
         for (HierarchicalConfiguration hc : sl) {
-            String folderName = hc.getString("@foldername");
-            String doctype = hc.getString("@doctype");
+            String folderName = hc.getString("[@foldername]");
+            String doctype = hc.getString("[@doctype]");
             suffixList.add(new StringPair(folderName, doctype));
         }
         titleType = prefs.getMetadataTypeByName("TitleDocMain");
-
+        datingType = prefs.getMetadataTypeByName("Dating");
+        publicationType = prefs.getMetadataTypeByName("PublicationYear");
+        pageType = prefs.getDocStrctTypeByName("page");
+        physType = prefs.getMetadataTypeByName("physPageNumber");
+        logType = prefs.getMetadataTypeByName("logicalPageNumber");
+        try {
+            masterFolder = process.getImagesOrigDirectory(false);
+        } catch (IOException | InterruptedException | SwapException | DAOException e) {
+            log.error(e);
+        }
     }
 
     @Override
@@ -192,37 +217,162 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
 
         // read content of folder
 
+        List<String> allFolderInDirectory = StorageProvider.getInstance().list(folder.toString());
 
+        List<String> prefixFolder = new ArrayList<>();
+        List<String> suffixFolder = new ArrayList<>();
+        List<String> otherFolder = new ArrayList<>();
 
-        // get correct prefix items from configuration file (like Vorderdeckel, Titelblatt,  Buchrücken)
+        // get correct prefix items from configuration file
+        for (StringPair sp : prefixList) {
+            String folderName = sp.getOne();
+            for (String currentFolder : allFolderInDirectory) {
+                if (currentFolder.equalsIgnoreCase(folderName)) {
+                    prefixFolder.add(currentFolder);
+                }
+            }
+        }
 
         // get correct suffix items from configuration file (like Buchrücken, Frabkeil, ...)
 
-        // assign folder to prefix and suffix items
+        for (StringPair sp : suffixList) {
+            String folderName = sp.getOne();
+            for (String currentFolder : allFolderInDirectory) {
+                if (currentFolder.equalsIgnoreCase(folderName)) {
+                    suffixFolder.add(currentFolder);
+                }
+            }
+        }
 
         // order other folder
+        for (String currentFolder : allFolderInDirectory) {
+            if (!prefixFolder.contains(currentFolder) && !suffixFolder.contains(currentFolder)) {
+                otherFolder.add(currentFolder);
+            }
+        }
+        Collections.sort(otherFolder);
+        int imageIndex = 1;
 
-        // create structure elements
+        // create all structure elements
+
+        // create cover, title page, ...
+        for (String foldername : prefixFolder) {
+            String docstructName = null;
+            for (StringPair sp : prefixList) {
+                if (foldername.equalsIgnoreCase(sp.getOne())) {
+                    docstructName = sp.getTwo();
+                    break;
+                }
+            }
+            try {
+                createDocstruct(dd, logical, physical, folder, foldername, docstructName, imageIndex, false);
+            } catch (UGHException | IOException e) {
+                log.error(e);
+            }
+        }
+        // create main elements
+        for (String currentFolder : otherFolder) {
+            try {
+                // create metadata TitleDocMain,  PublicationYear, Dating
+                createDocstruct(dd, logical, physical, folder, currentFolder, mainType, imageIndex, true);
+            } catch (UGHException | IOException e) {
+                log.error(e);
+            }
+        }
+
+        // create end elements
+        for (String foldername : suffixFolder) {
+            String docstructName = null;
+            for (StringPair sp : suffixList) {
+                if (foldername.equalsIgnoreCase(sp.getOne())) {
+                    docstructName = sp.getTwo();
+                    break;
+                }
+            }
+            try {
+                createDocstruct(dd, logical, physical, folder, foldername, docstructName, imageIndex, false);
+            } catch (UGHException | IOException e) {
+                log.error(e);
+            }
+        }
+        // save
+        try {
+            process.writeMetadataFile(fileformat);
+        } catch (WriteException | PreferencesException | IOException | InterruptedException | SwapException | DAOException e) {
+            log.error(e);
+        }
+
+        return PluginReturnValue.FINISH;
+    }
+
+    private void createDocstruct(DigitalDocument dd, DocStruct logical, DocStruct physical, Path mainFolder, String imageFolder, String docstructName,
+            int imageIndex, boolean createMetadata)
+                    throws TypeNotAllowedForParentException, TypeNotAllowedAsChildException, MetadataTypeNotAllowedException, IOException {
+        // create docstruct
+        DocStruct ds = dd.createDocStruct(prefs.getDocStrctTypeByName(docstructName));
+        logical.addChild(ds);
 
         // create page elements
+        List<Path> imagesInFolder = StorageProvider.getInstance().listFiles(Paths.get(mainFolder.toString(), imageFolder).toString());
+        for (Path image : imagesInFolder) {
+            String newImageName = imageFolder + "_" + image.getFileName().toString();
+            newImageName = newImageName.replaceAll("[^\\w_]", "_");
 
-        // copy/move images
+            DocStruct dsPage = dd.createDocStruct(pageType);
 
-        // save
+            ContentFile cf = new ContentFile();
+            if (SystemUtils.IS_OS_WINDOWS) {
+                cf.setLocation("file:/" + Paths.get(masterFolder, newImageName).toString());
+            } else {
+                cf.setLocation("file://" + Paths.get(masterFolder, newImageName).toString());
+            }
+            dsPage.addContentFile(cf);
+            physical.addChild(dsPage);
+            // assign pages to ds and logical
 
-        //BandSerie/Akte/
-        //Deckblatt
-        //Titelblatt
-        //Vorgang* -> Titel generieren "Protokoll vom " +  Date
-        // PublicationYear + Dating generieren
+            Metadata mdLogicalPageNo = new Metadata(logType);
+            dsPage.addMetadata(mdLogicalPageNo);
 
-        boolean successfull = true;
-        // your logic goes here
+            Metadata mdPhysPageNo = new Metadata(physType);
+            mdPhysPageNo.setValue(String.valueOf(imageIndex++));
+            dsPage.addMetadata(mdPhysPageNo);
+            logical.addReferenceTo(dsPage, "logical_physical");
+            ds.addReferenceTo(dsPage, "logical_physical");
 
-        log.info("Folderimport step plugin executed");
-        if (!successfull) {
-            return PluginReturnValue.ERROR;
+            if (createMetadata) {
+                try {
+                    if (titleType != null) {
+                        Metadata title = new Metadata(titleType);
+                        title.setValue("Protokoll vom " + imageFolder);
+                        ds.addMetadata(title);
+                    }
+                } catch (Exception e) {
+                    log.error(e);
+                }
+                String date = imageFolder.split(";")[0];
+                if (StringUtils.isNotBlank(date)) {
+                    try {
+                        if (publicationType != null) {
+                            Metadata md = new Metadata(publicationType);
+                            md.setValue(date);
+                            ds.addMetadata(md);
+                        }
+                        if (datingType != null) {
+                            Metadata md = new Metadata(datingType);
+                            md.setValue(date);
+                            ds.addMetadata(md);
+                        }
+                    } catch (Exception e) {
+                        log.error(e);
+                    }
+                }
+
+            }
+
+            // rename and copy image
+
+            Path destination = Paths.get(masterFolder, newImageName);
+            StorageProvider.getInstance().copyFile(image, destination);
         }
-        return PluginReturnValue.FINISH;
     }
 }

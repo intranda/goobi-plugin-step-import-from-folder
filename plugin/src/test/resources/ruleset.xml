@@ -2762,6 +2762,7 @@
     <allowedchildtype>Map</allowedchildtype>
     <allowedchildtype>Picture</allowedchildtype>
     <allowedchildtype>Sequence</allowedchildtype>
+    <allowedchildtype>Spine</allowedchildtype>    
     <metadata num="1o">CatalogIDDigital</metadata>
     <metadata num="*">CurrentNo</metadata>
     <metadata num="*">Creator</metadata>

@@ -77,7 +77,6 @@ public class FolderimportPluginTest {
 
         plugin.setRootFolder(resourcesFolder + "ImportFolder");
 
-
         PluginReturnValue response = plugin.run();
 
     }
@@ -116,14 +115,15 @@ public class FolderimportPluginTest {
         EasyMock.expect(configurationHelper.getGoobiContentServerTimeOut()).andReturn(60000).anyTimes();
         EasyMock.expect(configurationHelper.getMetadataFolder()).andReturn(metadataDirectoryName).anyTimes();
         EasyMock.expect(configurationHelper.getRulesetFolder()).andReturn(resourcesFolder).anyTimes();
-        EasyMock.expect(configurationHelper.getProcessImagesMainDirectoryName()).andReturn("folder_media").anyTimes();
+        EasyMock.expect(configurationHelper.getProcessImagesMasterDirectoryName()).andReturn("folder_master").anyTimes();
+        EasyMock.expect(configurationHelper.isCreateMasterDirectory()).andReturn(true).anyTimes();
         EasyMock.expect(configurationHelper.isUseMasterDirectory()).andReturn(true).anyTimes();
 
         EasyMock.expect(configurationHelper.getNumberOfMetaBackups()).andReturn(0).anyTimes();
         EasyMock.replay(configurationHelper);
 
         PowerMock.mockStatic(VariableReplacer.class);
-        EasyMock.expect(VariableReplacer.simpleReplace(EasyMock.anyString(), EasyMock.anyObject())).andReturn("folder_media").anyTimes();
+        EasyMock.expect(VariableReplacer.simpleReplace(EasyMock.anyString(), EasyMock.anyObject())).andReturn("folder_master").anyTimes();
         PowerMock.replay(VariableReplacer.class);
         prefs = new Prefs();
         prefs.loadPrefs(resourcesFolder + "ruleset.xml");

@@ -1,0 +1,23 @@
+<config_plugin>
+    <!--
+        order of configuration is:
+        1.) project name and step name matches
+        2.) step name matches and project is *
+        3.) project name matches and step name is *
+        4.) project name and step name are *
+    -->
+    <config>
+        <!-- which projects to use for (can be more then one, otherwise use *) -->
+        <project>*</project>
+        <step>*</step>
+        <!-- main image folder -->
+        <imageFolder>/opt/digiverso/extern/wismar/Konsulatsprotokolle</imageFolder>
+        
+        <prefixType foldername="Vorderdeckel" doctype="Cover"/>
+        <prefixType foldername="Titelblatt" doctype="TitlePage"/>
+        
+        <mainType>Sequence</mainType>
+        
+        <suffixType foldername="Buchrücken" doctype="Spine"/>
+    </config>
+</config_plugin>

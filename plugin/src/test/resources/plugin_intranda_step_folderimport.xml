@@ -18,6 +18,7 @@
         
         <mainType>Sequence</mainType>
         
+        <prefixType foldername="Rückendeckel" doctype="Cover"/>                
         <suffixType foldername="Buchrücken" doctype="Spine"/>
     </config>
 </config_plugin>

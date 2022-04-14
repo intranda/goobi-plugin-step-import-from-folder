@@ -103,21 +103,21 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
         prefs = process.getRegelsatz().getPreferences();
         // read parameters from correct block in configuration file
         SubnodeConfiguration myconfig = ConfigPlugins.getProjectAndStepConfig(title, step);
-        rootFolder = myconfig.getString("imageFolder");
+        rootFolder = myconfig.getString("/imageFolder");
 
-        List<HierarchicalConfiguration> pl = myconfig.configurationsAt("prefixType");
+        List<HierarchicalConfiguration> pl = myconfig.configurationsAt("/prefixType");
         for (HierarchicalConfiguration hc : pl) {
-            String doctype = hc.getString("[@doctype]");
-            String folderName = hc.getString("[@foldername]");
+            String doctype = hc.getString("@doctype");
+            String folderName = hc.getString("@foldername");
             prefixList.add(new StringPair(folderName, doctype));
         }
 
-        mainType = myconfig.getString("mainType");
+        mainType = myconfig.getString("/mainType");
 
-        List<HierarchicalConfiguration> sl = myconfig.configurationsAt("suffixType");
+        List<HierarchicalConfiguration> sl = myconfig.configurationsAt("/suffixType");
         for (HierarchicalConfiguration hc : sl) {
-            String folderName = hc.getString("[@foldername]");
-            String doctype = hc.getString("[@doctype]");
+            String folderName = hc.getString("@foldername");
+            String doctype = hc.getString("@doctype");
             suffixList.add(new StringPair(folderName, doctype));
         }
         titleType = prefs.getMetadataTypeByName("TitleDocMain");
@@ -205,11 +205,23 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
         }
         String mainTitle = titles.get(0).getValue();
 
+        // Tile: "Konsulatsprotokolle 1636 - 1638"
+
+        String titlePrefix = mainTitle.substring(0, mainTitle.lastIndexOf("-")).trim();
+        // -> "Konsulatsprotokolle 1636"
+        // Folder: Konsulatsprotokolle 1636-01-21 - 1638-04-17
         // search for folder
-        Path folder = Paths.get(rootFolder, mainTitle);
+        List<Path> allFolder = StorageProvider.getInstance().listFiles(rootFolder);
+        Path folder = null;
+        for (Path current : allFolder) {
+            if (current.getFileName().toString().startsWith(titlePrefix)) {
+                folder = current;
+                break;
+            }
+        }
 
         // if folder doesn't exist -> error
-        if (!StorageProvider.getInstance().isDirectory(folder)) {
+        if (folder == null || !StorageProvider.getInstance().isDirectory(folder)) {
             log.error("No folder to import found: {}", folder);
             Helper.setFehlerMeldung("No folder to import found.");
             return PluginReturnValue.ERROR;
@@ -265,7 +277,7 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
                 }
             }
             try {
-                createDocstruct(dd, logical, physical, folder, foldername, docstructName, imageIndex, false);
+                imageIndex = createDocstruct(dd, logical, physical, folder, foldername, docstructName, imageIndex, false);
             } catch (UGHException | IOException e) {
                 log.error(e);
             }
@@ -274,7 +286,7 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
         for (String currentFolder : otherFolder) {
             try {
                 // create metadata TitleDocMain,  PublicationYear, Dating
-                createDocstruct(dd, logical, physical, folder, currentFolder, mainType, imageIndex, true);
+                imageIndex = createDocstruct(dd, logical, physical, folder, currentFolder, mainType, imageIndex, true);
             } catch (UGHException | IOException e) {
                 log.error(e);
             }
@@ -290,7 +302,7 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
                 }
             }
             try {
-                createDocstruct(dd, logical, physical, folder, foldername, docstructName, imageIndex, false);
+                imageIndex = createDocstruct(dd, logical, physical, folder, foldername, docstructName, imageIndex, false);
             } catch (UGHException | IOException e) {
                 log.error(e);
             }
@@ -305,7 +317,7 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
         return PluginReturnValue.FINISH;
     }
 
-    private void createDocstruct(DigitalDocument dd, DocStruct logical, DocStruct physical, Path mainFolder, String imageFolder, String docstructName,
+    private int createDocstruct(DigitalDocument dd, DocStruct logical, DocStruct physical, Path mainFolder, String imageFolder, String docstructName,
             int imageIndex, boolean createMetadata)
                     throws TypeNotAllowedForParentException, TypeNotAllowedAsChildException, MetadataTypeNotAllowedException, IOException {
         // create docstruct
@@ -316,7 +328,10 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
         List<Path> imagesInFolder = StorageProvider.getInstance().listFiles(Paths.get(mainFolder.toString(), imageFolder).toString());
         for (Path image : imagesInFolder) {
             String newImageName = imageFolder + "_" + image.getFileName().toString();
-            newImageName = newImageName.replaceAll("[^\\w_]", "_");
+            if (newImageName.endsWith("Thumbs.db")) {
+                continue;
+            }
+            newImageName = newImageName.replaceAll("[^\\w_\\.]", "_");
 
             DocStruct dsPage = dd.createDocStruct(pageType);
 
@@ -334,17 +349,22 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
             dsPage.addMetadata(mdLogicalPageNo);
 
             Metadata mdPhysPageNo = new Metadata(physType);
-            mdPhysPageNo.setValue(String.valueOf(imageIndex++));
+            mdPhysPageNo.setValue(String.valueOf(imageIndex));
             dsPage.addMetadata(mdPhysPageNo);
             logical.addReferenceTo(dsPage, "logical_physical");
             ds.addReferenceTo(dsPage, "logical_physical");
-
+            imageIndex = imageIndex + 1;
             if (createMetadata) {
                 try {
                     if (titleType != null) {
-                        Metadata title = new Metadata(titleType);
+                        Metadata title = null;
+                        if (ds.getAllMetadataByType(titleType).isEmpty()) {
+                            title = new Metadata(titleType);
+                            ds.addMetadata(title);
+                        } else {
+                            title = ds.getAllMetadataByType(titleType).get(0);
+                        }
                         title.setValue("Protokoll vom " + imageFolder);
-                        ds.addMetadata(title);
                     }
                 } catch (Exception e) {
                     log.error(e);
@@ -373,6 +393,8 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
 
             Path destination = Paths.get(masterFolder, newImageName);
             StorageProvider.getInstance().copyFile(image, destination);
+
         }
+        return imageIndex;
     }
 }

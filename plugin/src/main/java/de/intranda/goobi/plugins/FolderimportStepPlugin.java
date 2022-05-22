@@ -70,7 +70,7 @@ import ugh.exceptions.WriteException;
 public class FolderimportStepPlugin implements IStepPluginVersion2 {
 
     @Getter
-    private String title = "intranda_step_folderimport";
+    private String title = "intranda_step_import_from_folder";
     @Getter
     private Step step;
 

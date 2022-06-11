@@ -18,8 +18,8 @@ Detail                      | Description
 **Plugin identifier**       | intranda_step_import_from_folder
 **Plugin type**             | Step Plugin
 **Licence**                 | GPL 2.0 or newer
-**Documentation (German)**  | - no documentation available - 
-**Documentation (English)** | - no documentation available -
+**Documentation (German)**  | https://docs.goobi.io/goobi-workflow-plugins-en/step/intranda_step_import_from_folder
+**Documentation (English)** | https://docs.goobi.io/goobi-workflow-plugins-en/step/intranda_step_import_from_folder
 
 
 Goobi details

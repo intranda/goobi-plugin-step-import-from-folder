@@ -128,7 +128,7 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
         logType = prefs.getMetadataTypeByName("logicalPageNumber");
         try {
             masterFolder = process.getImagesOrigDirectory(false);
-        } catch (IOException | InterruptedException | SwapException | DAOException e) {
+        } catch (IOException | SwapException | DAOException e) {
             log.error(e);
         }
     }
@@ -190,7 +190,7 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
             }
             physical = dd.getPhysicalDocStruct();
 
-        } catch (UGHException | IOException | InterruptedException | SwapException | DAOException e) {
+        } catch (UGHException | IOException | SwapException e) {
             log.error(e);
             Helper.setFehlerMeldung("Metadata not readable");
             return PluginReturnValue.ERROR;
@@ -310,7 +310,7 @@ public class FolderimportStepPlugin implements IStepPluginVersion2 {
         // save
         try {
             process.writeMetadataFile(fileformat);
-        } catch (WriteException | PreferencesException | IOException | InterruptedException | SwapException | DAOException e) {
+        } catch (WriteException | PreferencesException | IOException | SwapException e) {
             log.error(e);
         }
 

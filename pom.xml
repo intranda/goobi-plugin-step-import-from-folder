@@ -7,7 +7,7 @@
     <relativePath />
   </parent>
   <groupId>io.goobi.workflow.plugin</groupId>
-  <artifactId>plugin-step-folderimport</artifactId>
+  <artifactId>plugin-step-import-from-folder</artifactId>
   <packaging>pom</packaging>
   <modules>
     <module>module-base</module>

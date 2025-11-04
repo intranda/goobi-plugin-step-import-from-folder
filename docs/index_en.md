@@ -3,6 +3,10 @@ title: Metadata transfer from a directory
 identifier: intranda_step_folderimport
 published: true
 description: This step plugin enables an automatic import of images, structure data and pagination based on file names.
+keywords:
+    - Goobi workflow
+    - Plugin
+    - Step Plugin
 ---
 ## Introduction
 This plugin allows an automatic import of image files, as well as the creation of a structure and pagination based on existing files of a directory.

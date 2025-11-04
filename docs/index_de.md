@@ -3,6 +3,10 @@ title: Metatatenübernahme aus einem Verzeichnis
 identifier: intranda_step_folderimport
 published: true
 description: Dieses Step Plugin ermöglicht einen automatischen Import von Bildern, Strukturdaten und Paginierung auf der Basis von Dateinamen
+keywords:
+    - Goobi workflow
+    - Plugin
+    - Step Plugin
 ---
 ## Einführung
 Dieses Plugin erlaubt einen automatischen Import von Bilderdateien, sowie das Erstellen einer Struktur und Paginierung basierend auf vorliegenden Dateien eines Verzeichnisses.

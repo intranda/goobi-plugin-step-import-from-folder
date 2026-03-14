@@ -1,5 +1,5 @@
 ---
-title: Metatatenübernahme aus einem Verzeichnis
+title: Metadatenübernahme aus einem Verzeichnis
 identifier: intranda_step_folderimport
 published: true
 description: Dieses Step Plugin ermöglicht einen automatischen Import von Bildern, Strukturdaten und Paginierung auf der Basis von Dateinamen
@@ -33,7 +33,7 @@ Zur Inbetriebnahme des Plugins muss dieses für eine Aufgabe im Workflow aktivie
 
 Da dieses Plugin üblicherweise automatisch ausgeführt werden soll, sollte der Arbeitsschritt im Workflow als automatisch konfiguriert werden.
 
-Als erstes wird die METS Datei geöffnet und der Haupttitel gesucht. Über diesen findet das Matching im Importordner statt. Innerhalb des zu importerienden Ordners wird folgende Struktur erwartet:
+Als erstes wird die METS Datei geöffnet und der Haupttitel gesucht. Über diesen findet das Matching im Importordner statt. Innerhalb des zu importierenden Ordners wird folgende Struktur erwartet:
 
 ```xml
 /path/to/folder

@@ -19,7 +19,7 @@ To install the plug-in, the following file must be installed:
 /opt/digiverso/goobi/plugins/step/plugin_intranda_step_folderimport-base.jar
 ```
 
-Um zu konfigurieren, wie sich das Plugin verhalten soll, können verschiedene Werte in der Konfigurationsdatei angepasst werden. Die Konfigurationsdatei befindet sich üblicherweise hier:
+To configure how the plugin should behave, various values can be adjusted in the configuration file. The configuration file is usually located here:
 
 ```bash
 /opt/digiverso/goobi/config/plugin_intranda_step_folderimport.xml
@@ -29,7 +29,7 @@ Um zu konfigurieren, wie sich das Plugin verhalten soll, können verschiedene We
 ## Overview and functionality
  To put the plugin into operation, it must be activated for a task in the workflow. This is done as shown in the following screenshot by selecting the plugin `intranda_step_folderimport` from the list of installed plugins.
 
-![Integration in den Workflow](screen1_en.png)
+![Integration of the plugin into the workflow](screen1_en.png)
 
 Since this plugin should usually be executed automatically, the work step should be configured as automatic in the workflow.
 
